@@ -29,12 +29,18 @@ import {
 } from "@/data/questions";
 import { runSqlEvaluation, EvaluationResult } from "@/lib/sqlRunner";
 import { getSupabaseClient } from "@/lib/supabase";
+import { SQL75_ROADMAP, Sql75Status } from "@/data/sql75";
 
 const STORAGE_SOLVED = "qf_solved_codes_v1";
 const STORAGE_BOOKMARKS = "qf_bookmarked_codes_v1";
 const STORAGE_NOTES = "qf_notes_v1";
+const STORAGE_SQL75_PROGRESS = "qf_sql75_progress_v1";
 
 export default function QueryForgeArenaPage() {
+  const [viewMode, setViewMode] = useState<"arena" | "sql75">("arena");
+  const [sql75Progress, setSql75Progress] = useState<Record<number, Sql75Status>>({});
+  const [sql75Category, setSql75Category] = useState("All");
+  const [sql75Search, setSql75Search] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryName | "ALL">("ALL");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,9 +64,11 @@ export default function QueryForgeArenaPage() {
       const s = localStorage.getItem(STORAGE_SOLVED);
       const b = localStorage.getItem(STORAGE_BOOKMARKS);
       const n = localStorage.getItem(STORAGE_NOTES);
+      const r = localStorage.getItem(STORAGE_SQL75_PROGRESS);
       if (s) setSolvedCodes(JSON.parse(s));
       if (b) setBookmarkedCodes(JSON.parse(b));
       if (n) setNotesMap(JSON.parse(n));
+      if (r) setSql75Progress(JSON.parse(r));
     } catch {
       // Ignore storage errors
     }
@@ -88,6 +96,34 @@ export default function QueryForgeArenaPage() {
       return true;
     });
   }, [selectedCategory, selectedDifficulty, searchQuery, onlyBookmarked, bookmarkedCodes]);
+
+  const sql75Categories = useMemo(
+    () => ["All", ...Array.from(new Set(SQL75_ROADMAP.map((item) => item.category)))],
+    []
+  );
+
+  const filteredSql75 = useMemo(
+    () =>
+      SQL75_ROADMAP.filter((item) => {
+        if (sql75Category !== "All" && item.category !== sql75Category) return false;
+        const term = sql75Search.trim().toLowerCase();
+        return !term ||
+          item.title.toLowerCase().includes(term) ||
+          item.category.toLowerCase().includes(term) ||
+          item.skills.some((skill) => skill.toLowerCase().includes(term));
+      }),
+    [sql75Category, sql75Search]
+  );
+
+  const completedSql75 = SQL75_ROADMAP.filter(
+    (item) => sql75Progress[item.id] === "Completed"
+  ).length;
+
+  const updateSql75Status = (id: number, status: Sql75Status) => {
+    const next = { ...sql75Progress, [id]: status };
+    setSql75Progress(next);
+    localStorage.setItem(STORAGE_SQL75_PROGRESS, JSON.stringify(next));
+  };
 
   const selectQuestion = (q: SqlQuestion) => {
     setActiveCode(q.code);
@@ -178,6 +214,28 @@ export default function QueryForgeArenaPage() {
 
         {/* Live Telemetry Pill */}
         <div className="flex items-center gap-4 font-mono text-xs">
+          <div className="flex items-center gap-1 rounded border border-[#1C2B24] bg-[#080B0A] p-1">
+            <button
+              onClick={() => setViewMode("arena")}
+              className={`rounded px-2.5 py-1 ${
+                viewMode === "arena"
+                  ? "bg-[#39FF88]/15 text-[#39FF88]"
+                  : "text-[#8AA396] hover:text-[#E6F2EA]"
+              }`}
+            >
+              Arena
+            </button>
+            <button
+              onClick={() => setViewMode("sql75")}
+              className={`rounded px-2.5 py-1 ${
+                viewMode === "sql75"
+                  ? "bg-[#39FF88]/15 text-[#39FF88]"
+                  : "text-[#8AA396] hover:text-[#E6F2EA]"
+              }`}
+            >
+              SQL 75
+            </button>
+          </div>
           <div className="hidden items-center gap-2 rounded border border-[#1C2B24] bg-[#111916] px-3 py-1 sm:flex">
             <span className="h-2 w-2 rounded-full bg-[#39FF88]" />
             <span className="text-[#8AA396]">ENGINE:</span>
@@ -190,6 +248,7 @@ export default function QueryForgeArenaPage() {
       </header>
 
       {/* MAIN 3-PANE ENGINEERING WORKSTATION */}
+      {viewMode === "arena" ? (
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-12">
         {/* PANE 1: QUESTION BANK EXPLORER (3 cols) */}
         <aside className="flex flex-col border-r border-[#1C2B24] bg-[#0D1210] lg:col-span-3 overflow-hidden">
@@ -667,6 +726,132 @@ ${activeQuestion.seedSql}`}
           </div>
         </section>
       </div>
+      ) : (
+        <main className="flex-1 overflow-y-auto bg-[#080B0A] p-4 lg:p-6">
+          <div className="mx-auto max-w-6xl space-y-5">
+            <section className="rounded-lg border border-[#1C2B24] bg-[#0D1210] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-wider text-[#00D9A6]">
+                    Study Roadmap
+                  </div>
+                  <h1 className="mt-1 text-xl font-bold text-[#E6F2EA]">
+                    SQL 75 Interview Practice
+                  </h1>
+                  <p className="mt-1 max-w-2xl text-xs text-[#8AA396]">
+                    A 75-question progression covering filtering, joins, aggregation,
+                    window functions, ranking, and advanced SQL patterns.
+                  </p>
+                </div>
+                <div className="rounded border border-[#39FF88]/30 bg-[#39FF88]/10 px-4 py-2 font-mono text-xs text-[#39FF88]">
+                  Completed: {completedSql75} / {SQL75_ROADMAP.length}
+                </div>
+              </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#1C2B24]">
+                <div
+                  className="h-full bg-[#39FF88] transition-all"
+                  style={{ width: `${(completedSql75 / SQL75_ROADMAP.length) * 100}%` }}
+                />
+              </div>
+            </section>
+
+            <section className="flex flex-wrap gap-2">
+              <input
+                value={sql75Search}
+                onChange={(event) => setSql75Search(event.target.value)}
+                placeholder="Search title or SQL skill..."
+                className="min-w-64 flex-1 rounded border border-[#1C2B24] bg-[#0D1210] px-3 py-2 font-mono text-xs text-[#E6F2EA] placeholder:text-[#8AA396]/60 focus:border-[#39FF88] focus:outline-none"
+              />
+              <select
+                value={sql75Category}
+                onChange={(event) => setSql75Category(event.target.value)}
+                className="rounded border border-[#1C2B24] bg-[#0D1210] px-3 py-2 font-mono text-xs text-[#E6F2EA] focus:border-[#39FF88] focus:outline-none"
+              >
+                {sql75Categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </section>
+
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {filteredSql75.map((item) => {
+                const status = sql75Progress[item.id] ?? "Not Started";
+                return (
+                  <article
+                    key={item.id}
+                    className={`rounded-lg border bg-[#0D1210] p-4 ${
+                      status === "Completed"
+                        ? "border-[#39FF88]/50"
+                        : "border-[#1C2B24]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="font-mono text-[10px] text-[#00D9A6]">
+                        SQL-{String(item.id).padStart(2, "0")} | {item.category}
+                      </div>
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
+                          item.difficulty === "Easy"
+                            ? "bg-emerald-950 text-[#39FF88]"
+                            : item.difficulty === "Medium"
+                            ? "bg-amber-950 text-amber-300"
+                            : "bg-rose-950 text-rose-300"
+                        }`}
+                      >
+                        {item.difficulty}
+                      </span>
+                    </div>
+                    <h2 className="mt-2 text-sm font-bold text-[#E6F2EA]">
+                      {item.title}
+                    </h2>
+                    <p className="mt-1.5 text-xs leading-relaxed text-[#8AA396]">
+                      {item.summary}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {item.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded border border-[#1C2B24] bg-[#080B0A] px-1.5 py-0.5 font-mono text-[9px] text-[#8AA396]"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-2">
+                      <select
+                        value={status}
+                        onChange={(event) =>
+                          updateSql75Status(item.id, event.target.value as Sql75Status)
+                        }
+                        className={`rounded border px-2 py-1 font-mono text-[10px] ${
+                          status === "Completed"
+                            ? "border-[#39FF88]/40 bg-[#39FF88]/10 text-[#39FF88]"
+                            : "border-[#1C2B24] bg-[#111916] text-[#8AA396]"
+                        }`}
+                      >
+                        <option>Not Started</option>
+                        <option>In Progress</option>
+                        <option>Completed</option>
+                      </select>
+                      <a
+                        href={`https://leetcode.com/problems/${item.slug}/`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded border border-[#00D9A6]/40 px-2 py-1 font-mono text-[10px] text-[#00D9A6] hover:bg-[#00D9A6]/10"
+                      >
+                        Open on LeetCode
+                        <ChevronRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          </div>
+        </main>
+      )}
     </div>
   );
 }
