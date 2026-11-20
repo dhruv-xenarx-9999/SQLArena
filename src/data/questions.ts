@@ -40,7 +40,7 @@ export const CATEGORY_TARGETS: { name: CategoryName; target: number }[] = [
   { name: "Aggregations and Joins", target: 35 },
   { name: "Subqueries and CTEs", target: 20 },
   { name: "Window Functions", target: 25 },
-  { name: "Advanced SQL", target: 20 },
+  { name: "Advanced SQL", target: 70 },
   { name: "Business Interview Scenarios", target: 25 },
   { name: "Database Design and Modeling", target: 30 },
   { name: "Application and Transactional SQL", target: 20 },

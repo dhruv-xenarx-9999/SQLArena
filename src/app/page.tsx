@@ -27,6 +27,7 @@ import {
   Difficulty,
   SqlQuestion,
 } from "@/data/questions";
+import { ADVANCED_SQL_50 } from "@/data/advancedSql50";
 import { runSqlEvaluation, EvaluationResult } from "@/lib/sqlRunner";
 import { getSupabaseClient } from "@/lib/supabase";
 import { SQL75_ROADMAP, Sql75Status } from "@/data/sql75";
@@ -35,6 +36,8 @@ const STORAGE_SOLVED = "qf_solved_codes_v1";
 const STORAGE_BOOKMARKS = "qf_bookmarked_codes_v1";
 const STORAGE_NOTES = "qf_notes_v1";
 const STORAGE_SQL75_PROGRESS = "qf_sql75_progress_v1";
+
+const ARENA_QUESTIONS = [...QUESTIONS_250, ...ADVANCED_SQL_50];
 
 export default function QueryForgeArenaPage() {
   const [viewMode, setViewMode] = useState<"arena" | "sql75">("arena");
@@ -46,8 +49,8 @@ export default function QueryForgeArenaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [onlyBookmarked, setOnlyBookmarked] = useState(false);
 
-  const [activeCode, setActiveCode] = useState<string>(QUESTIONS_250[0].code);
-  const [editorSql, setEditorSql] = useState<string>(QUESTIONS_250[0].starterSql);
+  const [activeCode, setActiveCode] = useState<string>(ARENA_QUESTIONS[0].code);
+  const [editorSql, setEditorSql] = useState<string>(ARENA_QUESTIONS[0].starterSql);
   const [activeLeftTab, setActiveLeftTab] = useState<"problem" | "hints" | "solution" | "notes">("problem");
   const [revealedHints, setRevealedHints] = useState<number>(0);
 
@@ -75,12 +78,12 @@ export default function QueryForgeArenaPage() {
   }, []);
 
   const activeQuestion: SqlQuestion = useMemo(
-    () => QUESTIONS_250.find((q) => q.code === activeCode) ?? QUESTIONS_250[0],
+    () => ARENA_QUESTIONS.find((q) => q.code === activeCode) ?? ARENA_QUESTIONS[0],
     [activeCode]
   );
 
   const filteredQuestions = useMemo(() => {
-    return QUESTIONS_250.filter((q) => {
+    return ARENA_QUESTIONS.filter((q) => {
       if (selectedCategory !== "ALL" && q.category !== selectedCategory) return false;
       if (selectedDifficulty !== "ALL" && q.difficulty !== selectedDifficulty) return false;
       if (onlyBookmarked && !bookmarkedCodes.includes(q.code)) return false;
@@ -203,7 +206,7 @@ export default function QueryForgeArenaPage() {
                 QUERY<span className="text-[#39FF88]">FORGE</span>
               </span>
               <span className="rounded border border-[#1C2B24] bg-[#080B0A] px-1.5 py-0.5 text-[10px] text-[#00D9A6]">
-                SQL ARENA // 250 CHALLENGES
+                SQL ARENA // {ARENA_QUESTIONS.length} CHALLENGES
               </span>
             </div>
             <p className="font-mono text-[10px] text-[#8AA396]">
@@ -242,7 +245,7 @@ export default function QueryForgeArenaPage() {
             <span className="text-[#E6F2EA]">PostgreSQL 16 WASM</span>
           </div>
           <div className="rounded border border-[#39FF88]/30 bg-[#39FF88]/10 px-3 py-1 text-[#39FF88]">
-            SOLVED: {solvedCodes.length} / {QUESTIONS_250.length}
+            SOLVED: {solvedCodes.length} / {ARENA_QUESTIONS.length}
           </div>
         </div>
       </header>
@@ -273,7 +276,7 @@ export default function QueryForgeArenaPage() {
                 onChange={(e) => setSelectedCategory(e.target.value as CategoryName | "ALL")}
                 className="w-full rounded border border-[#1C2B24] bg-[#080B0A] px-2 py-1 font-mono text-xs text-[#E6F2EA] focus:border-[#39FF88] focus:outline-none"
               >
-                <option value="ALL">All 10 Domains (250)</option>
+                <option value="ALL">All Domains ({ARENA_QUESTIONS.length})</option>
                 {CATEGORY_TARGETS.map((c) => (
                   <option key={c.name} value={c.name}>
                     {c.name} ({c.target})
