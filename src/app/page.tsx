@@ -40,7 +40,7 @@ const STORAGE_SQL75_PROGRESS = "qf_sql75_progress_v1";
 const ARENA_QUESTIONS = [...QUESTIONS_250, ...ADVANCED_SQL_50];
 
 export default function QueryForgeArenaPage() {
-  const [viewMode, setViewMode] = useState<"arena" | "sql75">("arena");
+  const [viewMode, setViewMode] = useState<"arena" | "advanced50" | "sql75">("arena");
   const [sql75Progress, setSql75Progress] = useState<Record<number, Sql75Status>>({});
   const [sql75Category, setSql75Category] = useState("All");
   const [sql75Search, setSql75Search] = useState("");
@@ -84,6 +84,8 @@ export default function QueryForgeArenaPage() {
 
   const filteredQuestions = useMemo(() => {
     return ARENA_QUESTIONS.filter((q) => {
+      if (viewMode === "advanced50" && !q.code.startsWith("AS50-")) return false;
+      if (viewMode !== "advanced50" && q.code.startsWith("AS50-")) return false;
       if (selectedCategory !== "ALL" && q.category !== selectedCategory) return false;
       if (selectedDifficulty !== "ALL" && q.difficulty !== selectedDifficulty) return false;
       if (onlyBookmarked && !bookmarkedCodes.includes(q.code)) return false;
@@ -98,7 +100,25 @@ export default function QueryForgeArenaPage() {
       }
       return true;
     });
-  }, [selectedCategory, selectedDifficulty, searchQuery, onlyBookmarked, bookmarkedCodes]);
+  }, [viewMode, selectedCategory, selectedDifficulty, searchQuery, onlyBookmarked, bookmarkedCodes]);
+
+  const showAdvancedSql50 = () => {
+    setViewMode("advanced50");
+    setSelectedCategory("ALL");
+    setSelectedDifficulty("ALL");
+    setSearchQuery("");
+    setOnlyBookmarked(false);
+    selectQuestion(ADVANCED_SQL_50[0]);
+  };
+
+  const showArena = () => {
+    setViewMode("arena");
+    setSelectedCategory("ALL");
+    setSelectedDifficulty("ALL");
+    setSearchQuery("");
+    setOnlyBookmarked(false);
+    selectQuestion(QUESTIONS_250[0]);
+  };
 
   const sql75Categories = useMemo(
     () => ["All", ...Array.from(new Set(SQL75_ROADMAP.map((item) => item.category)))],
@@ -219,7 +239,7 @@ export default function QueryForgeArenaPage() {
         <div className="flex items-center gap-4 font-mono text-xs">
           <div className="flex items-center gap-1 rounded border border-[#1C2B24] bg-[#080B0A] p-1">
             <button
-              onClick={() => setViewMode("arena")}
+              onClick={showArena}
               className={`rounded px-2.5 py-1 ${
                 viewMode === "arena"
                   ? "bg-[#39FF88]/15 text-[#39FF88]"
@@ -227,6 +247,16 @@ export default function QueryForgeArenaPage() {
               }`}
             >
               Arena
+            </button>
+            <button
+              onClick={showAdvancedSql50}
+              className={`rounded px-2.5 py-1 ${
+                viewMode === "advanced50"
+                  ? "bg-[#39FF88]/15 text-[#39FF88]"
+                  : "text-[#8AA396] hover:text-[#E6F2EA]"
+              }`}
+            >
+              Advanced 50
             </button>
             <button
               onClick={() => setViewMode("sql75")}
@@ -251,7 +281,7 @@ export default function QueryForgeArenaPage() {
       </header>
 
       {/* MAIN 3-PANE ENGINEERING WORKSTATION */}
-      {viewMode === "arena" ? (
+      {viewMode !== "sql75" ? (
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-12">
         {/* PANE 1: QUESTION BANK EXPLORER (3 cols) */}
         <aside className="flex flex-col border-r border-[#1C2B24] bg-[#0D1210] lg:col-span-3 overflow-hidden">
@@ -269,21 +299,27 @@ export default function QueryForgeArenaPage() {
             </div>
 
             {/* Category Selector */}
-            <div className="flex items-center gap-1.5">
-              <Filter className="h-3.5 w-3.5 shrink-0 text-[#00D9A6]" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value as CategoryName | "ALL")}
-                className="w-full rounded border border-[#1C2B24] bg-[#080B0A] px-2 py-1 font-mono text-xs text-[#E6F2EA] focus:border-[#39FF88] focus:outline-none"
-              >
-                <option value="ALL">All Domains ({ARENA_QUESTIONS.length})</option>
-                {CATEGORY_TARGETS.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.name} ({c.target})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {viewMode === "advanced50" ? (
+              <div className="rounded border border-[#00D9A6]/30 bg-[#00D9A6]/5 px-2 py-1.5 font-mono text-[11px] text-[#00D9A6]">
+                Advanced SQL 50 · {filteredQuestions.length} problems
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 shrink-0 text-[#00D9A6]" />
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value as CategoryName | "ALL")}
+                  className="w-full rounded border border-[#1C2B24] bg-[#080B0A] px-2 py-1 font-mono text-xs text-[#E6F2EA] focus:border-[#39FF88] focus:outline-none"
+                >
+                  <option value="ALL">All Domains ({QUESTIONS_250.length})</option>
+                  {CATEGORY_TARGETS.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name} ({c.target})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Difficulty + Bookmarks Filter */}
             <div className="flex items-center justify-between gap-1 font-mono text-[11px]">
